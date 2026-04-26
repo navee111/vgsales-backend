@@ -41,7 +41,7 @@ app.get('/auth/google/callback', async (req, res) => {
     const { email, name } = profileRes.data
 
     const API = process.env.WT1_API_URL
-    const password = `oauth_${email.split('@')[0]}_2026`
+    const password = `oauth_${email.split('@')[0]}1212`
     let jwt
 
     try {
