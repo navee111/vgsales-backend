@@ -1,42 +1,16 @@
 import express from 'express'
 import cors from 'cors'
-import session from 'express-session'
 import axios from 'axios'
 import dotenv from 'dotenv'
-import process from 'node:process'
 dotenv.config()
 
 const app = express()
 
 app.use(cors({ 
-  origin: [
-    process.env.FRONTEND_URL,
-    'https://vgsales-frontend-production.up.railway.app',
-    'http://localhost:5173'
-  ], 
+  origin: process.env.FRONTEND_URL,
   credentials: true 
 }))
 app.use(express.json())
-app.get('/debug', (req, res) => {
-  res.json({
-    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
-    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-    hasRedirectUri: !!process.env.GOOGLE_REDIRECT_URI,
-    frontendUrl: process.env.FRONTEND_URL,
-    nodeEnv: process.env.NODE_ENV
-  })
-})
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'fallback-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true, 
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-  }
-}))
 
 app.get('/auth/google', (req, res) => {
   const params = new URLSearchParams({
@@ -83,9 +57,7 @@ app.get('/auth/google/callback', async (req, res) => {
       jwt = regRes.data.data?.register?.token
     }
 
-    req.session.jwt = jwt
-    req.session.user = { name, email }
-
+    // Skicka token via URL params istället för session
     res.redirect(`${process.env.FRONTEND_URL}?token=${jwt}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`)
   } catch (err) {
     console.error(err)
@@ -93,16 +65,15 @@ app.get('/auth/google/callback', async (req, res) => {
   }
 })
 
-app.get('/auth/me', (req, res) => {
-  if (!req.session.jwt) return res.status(401).json({ error: 'Not authenticated' })
-  res.json({ user: req.session.user, token: req.session.jwt })
-})
-
-app.post('/auth/logout', (req, res) => {
-  req.session.destroy()
-  res.json({ ok: true })
+app.get('/debug', (req, res) => {
+  res.json({
+    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    hasRedirectUri: !!process.env.GOOGLE_REDIRECT_URI,
+    frontendUrl: process.env.FRONTEND_URL,
+    nodeEnv: process.env.NODE_ENV
+  })
 })
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => console.log(`Auth server kör på port ${PORT}`))
-
